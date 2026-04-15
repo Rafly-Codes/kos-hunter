@@ -1,26 +1,35 @@
-// src/routes/kos.routes.ts
+import express from 'express';
+import dotenv from 'dotenv';
 
-import { Router } from 'express';
-import {
-  getAllKos,
-  getMyKos,
-  getKosById,
-  createKos,
-  updateKos,
-  deleteKos,
-} from '../controllers/kos.controller';
-import { authenticate, authorizeOwner } from '../middlewares/auth.middleware';
+dotenv.config();
 
-const router = Router();
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Public
-router.get('/', getAllKos);
-router.get('/:id', getKosById);
+app.use(express.json());
 
-// Owner only
-router.get('/owner/my', authenticate, authorizeOwner, getMyKos);
-router.post('/', authenticate, authorizeOwner, createKos);
-router.put('/:id', authenticate, authorizeOwner, updateKos);
-router.delete('/:id', authenticate, authorizeOwner, deleteKos);
+// ✅ ROUTES (JANGAN ADA AUTH GLOBAL DI SINI)
+import authRoutes from './routes/auth.routes';
+import kosRoutes from './routes/kos.routes';
+import fasilityRoutes from './routes/facility.routes';
+import reviewRoutes from './routes/review.routes';
+import bookingRoutes from './routes/booking.routes';
+import userRoutes from './routes/user.routes';
 
-export default router;
+app.use('/auth', authRoutes);
+app.use('/kos', kosRoutes);
+app.use('/kos/:kosId/fasilities', fasilityRoutes);
+app.use('/kos/:kosId/reviews', reviewRoutes);
+app.use('/bookings', bookingRoutes);
+app.use('/users', userRoutes);
+
+// OPTIONAL biar ga 404 root
+app.get('/', (req, res) => {
+  res.send('API Kos Hunter jalan 🚀');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+
+export default app;
