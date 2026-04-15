@@ -4,13 +4,13 @@ import { Request, Response } from 'express';
 import prisma from '../prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
-// GET /kos?gender=male
+// GET /kos
 export const getAllKos = async (req: Request, res: Response) => {
   try {
     const { gender } = req.query;
 
     const kos = await prisma.kos.findMany({
-      where: gender ? { gender: gender as any } : {},
+      where: gender ? { gender: gender as string } : {},
       include: {
         images: true,
         fasilities: true,
@@ -44,7 +44,7 @@ export const getMyKos = async (req: AuthRequest, res: Response) => {
 // GET /kos/:id
 export const getKosById = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id as string);
+    const id = Number(req.params.id);
 
     const kos = await prisma.kos.findUnique({
       where: { id },
@@ -60,10 +60,7 @@ export const getKosById = async (req: Request, res: Response) => {
       },
     });
 
-    if (!kos) {
-      res.status(404).json({ message: 'Kos tidak ditemukan' });
-      return;
-    }
+    if (!kos) return res.status(404).json({ message: 'Kos tidak ditemukan' });
 
     res.json(kos);
   } catch (error) {
@@ -78,11 +75,13 @@ export const createKos = async (req: AuthRequest, res: Response) => {
 
     const kos = await prisma.kos.create({
       data: {
-        userId: req.user.id,
         name,
         address,
         pricePerMonth,
         gender,
+        user: {
+          connect: { id: req.user.id }, // ✅ FIX
+        },
       },
     });
 
@@ -95,18 +94,14 @@ export const createKos = async (req: AuthRequest, res: Response) => {
 // PUT /kos/:id
 export const updateKos = async (req: AuthRequest, res: Response) => {
   try {
-    const id = Number(req.params.id as string);
+    const id = Number(req.params.id);
     const { name, address, pricePerMonth, gender } = req.body;
 
     const kos = await prisma.kos.findUnique({ where: { id } });
-    if (!kos) {
-      res.status(404).json({ message: 'Kos tidak ditemukan' });
-      return;
-    }
+    if (!kos) return res.status(404).json({ message: 'Kos tidak ditemukan' });
 
     if (kos.userId !== req.user.id) {
-      res.status(403).json({ message: 'Bukan kos milik Anda' });
-      return;
+      return res.status(403).json({ message: 'Bukan kos milik Anda' });
     }
 
     const updated = await prisma.kos.update({
@@ -123,20 +118,17 @@ export const updateKos = async (req: AuthRequest, res: Response) => {
 // DELETE /kos/:id
 export const deleteKos = async (req: AuthRequest, res: Response) => {
   try {
-    const id = Number(req.params.id as string);
+    const id = Number(req.params.id);
 
     const kos = await prisma.kos.findUnique({ where: { id } });
-    if (!kos) {
-      res.status(404).json({ message: 'Kos tidak ditemukan' });
-      return;
-    }
+    if (!kos) return res.status(404).json({ message: 'Kos tidak ditemukan' });
 
     if (kos.userId !== req.user.id) {
-      res.status(403).json({ message: 'Bukan kos milik Anda' });
-      return;
+      return res.status(403).json({ message: 'Bukan kos milik Anda' });
     }
 
     await prisma.kos.delete({ where: { id } });
+
     res.json({ message: 'Kos berhasil dihapus' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });

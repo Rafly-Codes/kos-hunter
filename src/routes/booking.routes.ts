@@ -1,5 +1,3 @@
-// src/routes/booking.routes.ts
-
 import { Router } from 'express';
 import {
   getMyBookings,
@@ -8,19 +6,26 @@ import {
   updateBookingStatus,
   getBookingById,
 } from '../controllers/booking.controller';
-import { authenticate, authorizeOwner, authorizeSociety } from '../middlewares/auth.middleware';
+import { authenticate, authorizeOwner } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// Society
-router.get('/my', authenticate, authorizeSociety, getMyBookings);
-router.post('/', authenticate, authorizeSociety, createBooking);
+// ================= USER =================
+// lihat booking sendiri
+router.get('/my', authenticate, getMyBookings);
 
-// Owner
+// buat booking
+router.post('/', authenticate, createBooking);
+
+// ================= OWNER =================
+// lihat booking dari kos dia
 router.get('/owner', authenticate, authorizeOwner, getOwnerBookings);
+
+// accept / reject booking
 router.patch('/:id/status', authenticate, authorizeOwner, updateBookingStatus);
 
-// Both (society pemilik booking & owner kos)
+// ================= DETAIL =================
+// detail booking (user & owner bisa lihat)
 router.get('/:id', authenticate, getBookingById);
 
 export default router;

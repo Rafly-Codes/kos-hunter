@@ -12,3 +12,81 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String?
+  email    String @unique
+  password String
+  phone    String?
+  role     String @default("USER")
+
+  createdAt DateTime @default(now())
+
+  kos       Kos[]
+  reviews   Review[]
+  bookings  Book[]
+}
+
+model Kos {
+  id            Int      @id @default(autoincrement())
+  name          String
+  description   String?
+  address       String
+  pricePerMonth Int
+  gender        String
+  userId        Int
+
+  user        User     @relation(fields: [userId], references: [id])
+  images      Image[]
+  fasilities  Facility[]
+  reviews     Review[]
+  bookings    Book[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Image {
+  id     Int  @id @default(autoincrement())
+  url    String
+  kosId  Int
+  kos    Kos  @relation(fields: [kosId], references: [id])
+}
+
+model Facility {
+  id     Int  @id @default(autoincrement())
+  name   String
+  kosId  Int
+  kos    Kos  @relation(fields: [kosId], references: [id])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int
+  comment   String?
+
+  userId    Int
+  kosId     Int
+
+  user      User @relation(fields: [userId], references: [id])
+  kos       Kos  @relation(fields: [kosId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model Book {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  kosId     Int
+
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("pending")
+
+  user      User @relation(fields: [userId], references: [id])
+  kos       Kos  @relation(fields: [kosId], references: [id])
+
+  createdAt DateTime @default(now())
+}

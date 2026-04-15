@@ -4,10 +4,10 @@ import { Request, Response } from 'express';
 import prisma from '../prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
-// GET /kos/:kosId/reviews
+// GET reviews
 export const getReviews = async (req: Request, res: Response) => {
   try {
-    const kosId = Number(req.params.kosId as string);
+    const kosId = Number(req.params.kosId);
 
     const reviews = await prisma.review.findMany({
       where: { kosId },
@@ -23,50 +23,22 @@ export const getReviews = async (req: Request, res: Response) => {
   }
 };
 
-// POST /kos/:kosId/reviews — society only
+// POST review
 export const createReview = async (req: AuthRequest, res: Response) => {
   try {
-    const kosId = Number(req.params.kosId as string);
-    const { comment } = req.body;
-
-    const kos = await prisma.kos.findUnique({ where: { id: kosId } });
-    if (!kos) {
-      res.status(404).json({ message: 'Kos tidak ditemukan' });
-      return;
-    }
+    const kosId = Number(req.params.kosId);
+    const { comment, rating } = req.body;
 
     const review = await prisma.review.create({
       data: {
-        kosId,
-        userId: req.user.id,
         comment,
+        rating,
+        user: { connect: { id: req.user.id } }, // ✅ FIX
+        kos: { connect: { id: kosId } }, // ✅ FIX
       },
     });
 
-    res.status(201).json({ message: 'Review berhasil ditambahkan', review });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
-  }
-};
-
-// DELETE /kos/:kosId/reviews/:id — society (pemilik review) only
-export const deleteReview = async (req: AuthRequest, res: Response) => {
-  try {
-    const id = Number(req.params.id as string);
-
-    const review = await prisma.review.findUnique({ where: { id } });
-    if (!review) {
-      res.status(404).json({ message: 'Review tidak ditemukan' });
-      return;
-    }
-
-    if (review.userId !== req.user.id) {
-      res.status(403).json({ message: 'Bukan review milik Anda' });
-      return;
-    }
-
-    await prisma.review.delete({ where: { id } });
-    res.json({ message: 'Review berhasil dihapus' });
+    res.status(201).json({ message: 'Review berhasil', review });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
   }

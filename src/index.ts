@@ -13,7 +13,7 @@ app.use(express.json());
 // Routes
 import authRoutes from './routes/auth.routes';
 import kosRoutes from './routes/kos.routes';
-import fasilityRoutes from './routes/fasility.routes';
+import fasilityRoutes from './routes/facility.routes';
 import reviewRoutes from './routes/review.routes';
 import bookingRoutes from './routes/booking.routes';
 import userRoutes from './routes/user.routes';

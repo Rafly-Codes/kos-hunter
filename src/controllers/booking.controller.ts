@@ -1,16 +1,22 @@
-// src/controllers/booking.controller.ts
-
 import { Response } from 'express';
 import prisma from '../prisma';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
-// GET /bookings — histori booking milik society yang login
+// ================= USER =================
+// GET /bookings/my
 export const getMyBookings = async (req: AuthRequest, res: Response) => {
   try {
     const bookings = await prisma.book.findMany({
       where: { userId: req.user.id },
       include: {
-        kos: { select: { id: true, name: true, address: true, pricePerMonth: true } },
+        kos: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            pricePerMonth: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -21,20 +27,21 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// GET /bookings/owner — histori booking kos milik owner (bisa filter by tanggal/bulan)
+// ================= OWNER =================
+// GET /bookings/owner
 export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
   try {
     const { month, year } = req.query;
 
-    // Ambil semua kos milik owner
     const myKos = await prisma.kos.findMany({
       where: { userId: req.user.id },
       select: { id: true },
     });
-    const kosIds = myKos.map((k) => k.id);
 
-    // Filter by bulan dan tahun jika ada
-    let dateFilter = {};
+    const kosIds = myKos.map(k => k.id);
+
+    let dateFilter: any = {};
+
     if (month && year) {
       const start = new Date(Number(year), Number(month) - 1, 1);
       const end = new Date(Number(year), Number(month), 0, 23, 59, 59);
@@ -56,12 +63,16 @@ export const getOwnerBookings = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// POST /bookings — society buat booking
+// ================= CREATE =================
+// POST /bookings
 export const createBooking = async (req: AuthRequest, res: Response) => {
   try {
     const { kosId, startDate, endDate } = req.body;
 
-    const kos = await prisma.kos.findUnique({ where: { id: Number(kosId) } });
+    const kos = await prisma.kos.findUnique({
+      where: { id: Number(kosId) },
+    });
+
     if (!kos) {
       res.status(404).json({ message: 'Kos tidak ditemukan' });
       return;
@@ -69,11 +80,11 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
 
     const booking = await prisma.book.create({
       data: {
-        kosId: Number(kosId),
-        userId: req.user.id,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         status: 'pending',
+        user: { connect: { id: req.user.id } },
+        kos: { connect: { id: Number(kosId) } },
       },
     });
 
@@ -83,14 +94,15 @@ export const createBooking = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// PATCH /bookings/:id/status — owner update status booking
+// ================= UPDATE STATUS =================
+// PATCH /bookings/:id/status
 export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
   try {
-    const id = Number(req.params.id as string);
+    const id = Number(req.params.id);
     const { status } = req.body;
 
     if (!['accept', 'reject'].includes(status)) {
-      res.status(400).json({ message: 'Status tidak valid, gunakan accept atau reject' });
+      res.status(400).json({ message: 'Status tidak valid (accept/reject)' });
       return;
     }
 
@@ -104,6 +116,7 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
       return;
     }
 
+    // hanya owner kos yang boleh update
     if (booking.kos.userId !== req.user.id) {
       res.status(403).json({ message: 'Bukan kos milik Anda' });
       return;
@@ -114,16 +127,20 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
       data: { status },
     });
 
-    res.json({ message: `Booking berhasil di-${status}`, booking: updated });
+    res.json({
+      message: `Booking berhasil di-${status}`,
+      booking: updated,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
   }
 };
 
-// GET /bookings/:id — detail booking (untuk cetak nota)
+// ================= DETAIL =================
+// GET /bookings/:id
 export const getBookingById = async (req: AuthRequest, res: Response) => {
   try {
-    const id = Number(req.params.id as string);
+    const id = Number(req.params.id);
 
     const booking = await prisma.book.findUnique({
       where: { id },
@@ -133,7 +150,9 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
             user: { select: { id: true, name: true, phone: true } },
           },
         },
-        user: { select: { id: true, name: true, phone: true, email: true } },
+        user: {
+          select: { id: true, name: true, phone: true, email: true },
+        },
       },
     });
 
@@ -142,8 +161,11 @@ export const getBookingById = async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    // Hanya pemilik booking atau owner kos yang bisa lihat
-    if (booking.userId !== req.user.id && booking.kos.userId !== req.user.id) {
+    // hanya user pemilik booking atau owner kos
+    if (
+      booking.userId !== req.user.id &&
+      booking.kos.userId !== req.user.id
+    ) {
       res.status(403).json({ message: 'Akses ditolak' });
       return;
     }
